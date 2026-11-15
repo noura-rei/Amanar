@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#04060a">
+  <title>LUNA-01: Lunar South Pole Rover Exploration (WebXR / Three.js)</title>
+
+  <!-- Technical Architecture & CDN Scripts -->
+  <!-- 5. CesiumJS (Geospatial 3D Moon Globe option) -->
+  <link rel="stylesheet" href="https://cesium.com/downloads/cesiumjs/releases/1.115/Build/Cesium/Widgets/widgets.css">
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.115/Build/Cesium/Cesium.js"></script>
+
+  <!-- 4. MeshoptDecoder (for compressed NASA models) fallback -->
+  <script src="https://cdn.jsdelivr.net/npm/meshoptimizer@0.20.0/meshopt_decoder.js"></script>
+
+  <!-- 1. Three.js Core Library, 2. Three.js VRButton, 3. GLTFLoader, 4. MeshoptDecoder ImportMap -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+      "three/addons/webxr/VRButton.js": "https://unpkg.com/three@0.160.0/examples/jsm/webxr/VRButton.js",
+      "three/addons/loaders/GLTFLoader.js": "https://unpkg.com/three@0.160.0/examples/jsm/loaders/GLTFLoader.js",
+      "three/addons/libs/meshopt_decoder.module.js": "https://unpkg.com/three@0.160.0/examples/jsm/libs/meshopt_decoder.module.js",
+      "three/addons/controls/OrbitControls.js": "https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js"
+    }
+  }
+  </script>
+
+  <!-- Mission Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Three.js WebGL / WebXR Canvas Container -->
+  <div id="simulation-container"></div>
+
+  <!-- CesiumJS Geospatial Moon Globe View Container -->
+  <div id="cesium-container">
+    <div id="cesium-top-bar">
+      <span class="status-badge">CESIUM 3D MOON GLOBE</span>
+      <span style="color:#a4c4e0; font-size:11px;">SOUTH POLE LOLA GEOSPATIAL TILES</span>
+      <button id="btn-cesium-back" class="btn-hud highlight">← RETURN TO ROVER VR</button>
+    </div>
+  </div>
+
+  <!-- Cockpit Crosshair Reticle -->
+  <div id="crosshair"></div>
+
+  <!-- 2D HUD OVERLAY & MISSION CONTROL BAR -->
+  <div id="hud-overlay">
+    <!-- Top Header -->
+    <header class="hud-panel hud-header">
+      <div class="mission-tag">
+        <span class="nasa-logo-badge">NASA</span>
+        <div>
+          <div class="mission-title">LUNA-01 // ROVER EXPLORATION</div>
+          <div class="mission-subtitle">LUNAR SOUTH POLE • SHACKLETON CRATER PSR</div>
+        </div>
+      </div>
+
+      <div class="header-status">
+        <div id="sys-status-badge" class="status-badge">
+          <span class="status-pulse"></span>
+          SYS NOMINAL
+        </div>
+        <div id="thermal-status-tag" class="status-badge">
+          THERMAL OK
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button id="btn-audio" class="btn-hud active" title="Toggle audio synthesizer">AUDIO: ON</button>
+        <button id="btn-headlights-top" class="btn-hud active" title="Toggle dual LED headlights (H)">LIGHTS: HIGH</button>
+        <button id="btn-cesium-toggle" class="btn-hud highlight" title="Toggle Cesium Geospatial Moon Globe (M)">GLOBE (M)</button>
+        <button id="btn-asset-hub" class="btn-hud" title="NASA 3D Assets & Model Hub">NASA ASSETS</button>
+        <button id="btn-help" class="btn-hud" title="Mission Controls (?)">?</button>
+      </div>
+    </header>
+
+    <!-- Telemetry Panels -->
+    <main class="hud-body">
+      <!-- Left Panel: Speedometer, Power & Chassis Attitude -->
+      <section class="telemetry-left">
+        <div class="hud-panel card-content">
+          <div class="card-title">
+            <span>SURFACE MOBILITY</span>
+            <span style="color:var(--cyan-telemetry)">0–12 KM/H</span>
+          </div>
+
+          <div class="metric-row">
+            <span class="metric-label">SPEED</span>
+            <div>
+              <span id="telemetry-speed" class="metric-value">0.0</span>
+              <span class="metric-unit">KM/H</span>
+            </div>
+          </div>
+          <div class="progress-bar-container">
+            <div id="speed-bar-fill" class="progress-bar-fill" style="width: 0%;"></div>
+          </div>
+
+          <div class="metric-row" style="margin-top: 6px;">
+            <span class="metric-label">PITCH / ROLL</span>
+            <div>
+              <span id="telemetry-pitch" class="metric-value">+0.0°</span>
+              <span class="metric-unit">/</span>
+              <span id="telemetry-roll" class="metric-value">+0.0°</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hud-panel card-content">
+          <div class="card-title">
+            <span>ELECTRICAL SUBSYSTEM</span>
+            <span id="telemetry-battery" style="color:#fff; font-weight:700;">100%</span>
+          </div>
+
+          <div class="progress-bar-container">
+            <div id="battery-bar-fill" class="progress-bar-fill" style="width: 100%;"></div>
+          </div>
+
+          <div class="metric-row">
+            <span class="metric-label">SOLAR GENERATION</span>
+            <div>
+              <span id="telemetry-solar" class="metric-value" style="color:var(--emerald-good)">+750</span>
+              <span class="metric-unit">W</span>
+            </div>
+          </div>
+
+          <div class="metric-row">
+            <span class="metric-label">RCS / DRIVE LOAD</span>
+            <div>
+              <span id="telemetry-rcs" class="metric-value" style="color:var(--amber-warning)">-220</span>
+              <span class="metric-unit">W</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Center Waypoint Navigation Banner -->
+      <section class="hud-panel card-content" style="text-align: center; max-width: 440px; margin: 0 10px;">
+        <div class="card-title" style="justify-content: center; gap: 8px;">
+          <span>NAV TARGET (PRESS TAB TO CYCLE)</span>
+        </div>
+        <div class="waypoint-box">
+          <div id="telemetry-target-name" class="waypoint-name">SHACKLETON FLOOR COLD TRAP (ICE ALPHA)</div>
+          <div id="telemetry-target-dist" class="waypoint-dist">-- m</div>
+          <div id="telemetry-target-bearing" class="waypoint-bearing">BEARING: +0° RELATIVE</div>
+        </div>
+      </section>
+
+      <!-- Right Panel: Thermal Margin & Neutron Spectrometer -->
+      <section class="telemetry-right">
+        <div class="hud-panel card-content">
+          <div class="card-title">
+            <span>THERMAL RESERVE</span>
+            <span style="color:#8bb0d0;">COLD FAULT -40°C</span>
+          </div>
+
+          <div class="metric-row">
+            <span class="metric-label">MARGIN ABOVE FAULT</span>
+            <div>
+              <span id="telemetry-thermal" class="metric-value">+28.5</span>
+              <span class="metric-unit">°C</span>
+            </div>
+          </div>
+          <div class="progress-bar-container">
+            <div id="thermal-bar-fill" class="progress-bar-fill thermal-cold" style="width: 90%;"></div>
+          </div>
+          <div style="font-size: 10px; color: #8bb0d0;">
+            PSR cold trap plunges to -233°C (40K).
+          </div>
+        </div>
+
+        <div class="hud-panel card-content">
+          <div class="card-title">
+            <span>NEUTRON SPECTROMETER</span>
+            <span style="color:var(--emerald-good)">VOLATILES SENSOR</span>
+          </div>
+
+          <div class="metric-row">
+            <span class="metric-label">H2O WATER-ICE CONC.</span>
+            <div>
+              <span id="telemetry-ice" class="metric-value">0.0 %</span>
+              <span class="metric-unit">WEH</span>
+            </div>
+          </div>
+          <div class="progress-bar-container">
+            <div id="ice-bar-fill" class="progress-bar-fill" style="width: 0%; background: linear-gradient(90deg, #00b4d8, #00ff88);"></div>
+          </div>
+          <div id="science-status-text" style="font-size: 10px; color: #8bb0d0;">
+            Searching PSR floor for subsurface hydrogen...
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- NASA MISSION CONTROL BAR (INTERACTIVE TELEOPERATION & STATUS) -->
+    <footer id="mission-control-bar" class="hud-panel">
+      <!-- Section 1: Mission Clock & DSN -->
+      <div class="mc-section">
+        <div class="mc-clock-box">
+          <span class="mc-label">MISSION ELAPSED</span>
+          <span id="mc-met-clock" class="mc-clock-val">MET +014:08:22</span>
+        </div>
+        <div>
+          <span class="mc-label">COMM LINK</span>
+          <div style="font-size: 11px; color: #fff; display: flex; align-items: center; gap: 4px;">
+            <span style="color:var(--emerald-good)">●</span> DSN 34M (1.28s)
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Interactive Drive Pad & Speed Presets -->
+      <div class="mc-section">
+        <div class="drive-dpad">
+          <div></div>
+          <button id="btn-drive-fwd" class="btn-drive" title="Forward (W / Up)">▲</button>
+          <div></div>
+          <button id="btn-drive-left" class="btn-drive" title="Steer Left (A / Left)">◀</button>
+          <button id="btn-drive-brake" class="btn-drive btn-brake" title="Brake (Space)">STOP</button>
+          <button id="btn-drive-right" class="btn-drive" title="Steer Right (D / Right)">▶</button>
+          <div></div>
+          <button id="btn-drive-rev" class="btn-drive" title="Reverse (S / Down)">▼</button>
+          <div></div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <span class="mc-label">SPEED LIMIT</span>
+          <div class="speed-preset-group">
+            <button class="btn-speed-preset" data-preset="1" title="Slow Mode (3 km/h)">3</button>
+            <button class="btn-speed-preset" data-preset="2" title="Cruise Mode (7 km/h)">7</button>
+            <button class="btn-speed-preset active" data-preset="3" title="Max Mode (12 km/h)">12</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3: Autonomous Actions & Science Drill -->
+      <div class="mc-section">
+        <button id="btn-autonav" class="btn-hud btn-action-autonav" title="Auto-Drive Rover to Selected Water-Ice Waypoint">
+          🤖 AUTO-NAV
+        </button>
+        <button id="btn-drill-scan" class="btn-hud btn-action-drill" title="Lower Drill & Assay Regolith Ice Volatiles">
+          🔬 DRILL & SCAN
+        </button>
+        <button id="btn-align-sun" class="btn-hud" title="Align Solar Wings with 4° Low Polar Sun">
+          ☀️ ALIGN SUN
+        </button>
+      </div>
+
+      <!-- Section 4: Camera Views, Lights & WebXR -->
+      <div class="mc-section">
+        <div style="display: flex; gap: 4px;">
+          <button class="btn-hud cam-btn active" data-mode="0" title="Mast Cockpit View (y: 1.8m, z: -0.5m)">COCKPIT</button>
+          <button class="btn-hud cam-btn" data-mode="1" title="Tactical Chase Camera (3rd person)">CHASE</button>
+          <button class="btn-hud cam-btn" data-mode="2" title="Rocker-Bogie Suspension Cam">WHEELS</button>
+          <button class="btn-hud cam-btn" data-mode="3" title="Free Orbital Inspection Cam">ORBIT</button>
+        </div>
+
+        <button id="btn-reset-rim" class="btn-hud" title="Reset Rover Position to Sunlit Rim (R)">RESET</button>
+
+        <!-- WebXR VRButton Injected Slot -->
+        <div id="vr-button-slot"></div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- NASA 3D ASSETS & TOPOGRAPHY HUB MODAL -->
+  <div id="asset-modal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2>
+          <span class="nasa-logo-badge">NASA</span>
+          EMBEDDED 3D ASSETS & TERRAIN DATA HUB
+        </h2>
+        <button id="asset-modal-close" class="modal-close">✕</button>
+      </div>
+
+      <p style="font-size: 12px; color: #a4c4e0; margin-bottom: 16px;">
+        Direct resource endpoints integrated into the LUNA-01 model loader routines:
+      </p>
+
+      <div id="asset-list-container">
+        <!-- Rendered dynamically by nasaLoader.js -->
+      </div>
+
+      <div class="drop-zone" id="model-drop-zone">
+        <p style="font-size: 13px; font-weight: 700; color: #fff;">DRAG & DROP CUSTOM NASA 3D MODEL (glTF / GLB / OBJ)</p>
+        <p style="font-size: 11px; color: #8bb0d0; margin-top: 4px;">
+          Export custom 3D meshes of Shackleton Crater or Malapert Mountain from NASA Moon Trek (<a href="https://trek.nasa.gov/moon/" target="_blank" style="color:var(--cyan-telemetry)">trek.nasa.gov/moon</a>) and drop here!
+        </p>
+        <input type="file" id="model-file-input" accept=".glb,.gltf" style="display: none;">
+      </div>
+    </div>
+  </div>
+
+  <!-- MISSION CONTROLS & HELP MODAL -->
+  <div id="help-modal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2>LUNA-01 MISSION CONTROLS & VR GUIDE</h2>
+        <button id="help-modal-close" class="modal-close">✕</button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-size: 12px;">
+        <div class="asset-card">
+          <div class="asset-card-title">DESKTOP / TELEOPERATION</div>
+          <p><span class="key-badge">W</span> / <span class="key-badge">↑</span> : Forward Throttle (0–12 km/h)</p>
+          <p><span class="key-badge">S</span> / <span class="key-badge">↓</span> : Reverse Throttle</p>
+          <p><span class="key-badge">A</span> / <span class="key-badge">D</span> : Steer Left / Right</p>
+          <p><span class="key-badge">Space</span> : Chassis Handbrake</p>
+          <p><span class="key-badge">H</span> : Toggle LED Headlights (Off / Low / High)</p>
+          <p><span class="key-badge">C</span> : Cycle Camera (Cockpit / Chase / Wheels / Orbit)</p>
+          <p><span class="key-badge">M</span> : Toggle Cesium Geospatial Moon Globe</p>
+          <p><span class="key-badge">Tab</span> : Cycle Nav Waypoints (Ice Deposits)</p>
+          <p><span class="key-badge">R</span> : Reset Rover to Sunlit Rim</p>
+          <p style="margin-top:6px; color:var(--cyan-telemetry)">You can also click and hold the on-screen D-Pad buttons in the Mission Control Bar!</p>
+        </div>
+
+        <div class="asset-card">
+          <div class="asset-card-title">WEBXR VIRTUAL REALITY</div>
+          <p>Click <strong style="color:var(--artemis-orange)">ENTER VR</strong> to launch the WebXR session.</p>
+          <p><strong>Left Thumbstick:</strong> Drive Forward / Reverse & Steering.</p>
+          <p><strong>Right Thumbstick:</strong> Heading turn.</p>
+          <p><strong>Trigger / Grip:</strong> Headlights & Brake.</p>
+          <p><strong>Mast Cockpit Rig:</strong> Mounted at <code>y: 1.8m, z: -0.5m</code> with foreground solar wings and rocker-bogie frame.</p>
+          <p><strong>Floating 3D HUD:</strong> Positioned at <code>(0, 0.2, -1)</code> in front of your VR headset with live Mission Control telecommands.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast-notification">LUNA-01 Simulation Initialized</div>
+
+  <!-- Application Module Entry Point -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

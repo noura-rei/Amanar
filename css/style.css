@@ -1,0 +1,742 @@
+/* LUNA-01: Lunar South Pole Rover Exploration - Stylesheet */
+:root {
+  --nasa-blue: #0b3d91;
+  --artemis-orange: #fc3d21;
+  --cyan-telemetry: #00f0ff;
+  --emerald-good: #00ff88;
+  --amber-warning: #ffb700;
+  --crimson-hazard: #ff2a4b;
+  --space-black: #04060a;
+  --hud-glass: rgba(8, 14, 24, 0.82);
+  --hud-border: rgba(0, 240, 255, 0.3);
+  --font-mono: 'SF Mono', 'Fira Code', 'Roboto Mono', Menlo, Consolas, monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--space-black);
+  color: #e0f0ff;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+#simulation-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+#cesium-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  display: none;
+  background-color: #000;
+}
+
+#cesium-container.active {
+  display: block;
+}
+
+/* 2D HUD OVERLAY */
+#hud-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 12px;
+  transition: opacity 0.3s ease;
+}
+
+.hud-panel {
+  pointer-events: auto;
+  background: var(--hud-glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--hud-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.65), inset 0 0 16px rgba(0, 240, 255, 0.06);
+}
+
+/* TOP HEADER BAR */
+.hud-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  width: 100%;
+  max-width: 1300px;
+  margin: 0 auto;
+}
+
+.mission-tag {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nasa-logo-badge {
+  background: linear-gradient(135deg, #0b3d91, #1e5ebc);
+  color: #fff;
+  padding: 4px 8px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  font-size: 12px;
+  border-radius: 4px;
+  box-shadow: 0 0 10px rgba(11, 61, 145, 0.5);
+}
+
+.mission-title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #fff;
+  text-shadow: 0 0 8px var(--cyan-telemetry);
+}
+
+.mission-subtitle {
+  font-size: 10px;
+  color: #8bb0d0;
+  letter-spacing: 1px;
+}
+
+.header-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+}
+
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  background: rgba(0, 255, 136, 0.1);
+  border: 1px solid var(--emerald-good);
+  color: var(--emerald-good);
+  border-radius: 4px;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.status-badge.warning {
+  background: rgba(255, 183, 0, 0.12);
+  border-color: var(--amber-warning);
+  color: var(--amber-warning);
+}
+
+.status-badge.hazard {
+  background: rgba(255, 42, 75, 0.2);
+  border-color: var(--crimson-hazard);
+  color: var(--crimson-hazard);
+  animation: pulseHazard 1s infinite alternate;
+}
+
+.status-pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}
+
+/* TOP RIGHT ACTIONS */
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-hud {
+  pointer-events: auto;
+  background: rgba(14, 28, 48, 0.75);
+  border: 1px solid rgba(0, 240, 255, 0.35);
+  color: var(--cyan-telemetry);
+  padding: 6px 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.btn-hud:hover {
+  background: rgba(0, 240, 255, 0.22);
+  border-color: var(--cyan-telemetry);
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.4);
+  transform: translateY(-1px);
+}
+
+.btn-hud:active {
+  transform: translateY(1px);
+}
+
+.btn-hud.active {
+  background: rgba(0, 240, 255, 0.35);
+  border-color: #fff;
+  color: #fff;
+  box-shadow: 0 0 14px rgba(0, 240, 255, 0.6);
+}
+
+.btn-hud.highlight {
+  border-color: var(--artemis-orange);
+  color: #ff8b70;
+}
+
+.btn-hud.highlight:hover {
+  background: rgba(252, 61, 33, 0.25);
+  border-color: var(--artemis-orange);
+  box-shadow: 0 0 12px rgba(252, 61, 33, 0.4);
+}
+
+/* TELEMETRY BODY PANELS */
+.hud-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.telemetry-left, .telemetry-right {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 280px;
+}
+
+.card-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: #8bb0d0;
+  margin-bottom: 6px;
+  border-bottom: 1px solid rgba(0, 240, 255, 0.15);
+  padding-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.card-content {
+  padding: 10px 14px;
+}
+
+/* GAUGES & METRICS */
+.metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.metric-label {
+  font-size: 11px;
+  color: #a4c4e0;
+}
+
+.metric-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  font-feature-settings: 'tnum';
+}
+
+.metric-unit {
+  font-size: 10px;
+  color: var(--cyan-telemetry);
+  margin-left: 2px;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 3px;
+  margin-bottom: 6px;
+  position: relative;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  width: 50%;
+  background: linear-gradient(90deg, #00b4d8, var(--cyan-telemetry));
+  border-radius: 3px;
+  transition: width 0.25s ease, background 0.25s ease;
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
+}
+
+.progress-bar-fill.thermal-cold {
+  background: linear-gradient(90deg, #0077b6, #00b4d8);
+}
+
+.progress-bar-fill.hazard {
+  background: linear-gradient(90deg, #ff2a4b, #ff708b);
+  box-shadow: 0 0 10px var(--crimson-hazard);
+}
+
+/* WAYPOINT NAV COMPASS */
+.waypoint-box {
+  background: rgba(0, 240, 255, 0.05);
+  border: 1px dashed rgba(0, 240, 255, 0.3);
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin-top: 4px;
+}
+
+.waypoint-name {
+  color: var(--artemis-orange);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+
+.waypoint-dist {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  margin-top: 2px;
+}
+
+.waypoint-bearing {
+  font-size: 10px;
+  color: #8bb0d0;
+}
+
+/* NASA MISSION CONTROL BAR */
+#mission-control-bar {
+  pointer-events: auto;
+  width: 100%;
+  max-width: 1300px;
+  margin: 0 auto;
+  padding: 8px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  background: rgba(6, 12, 22, 0.9);
+  border: 1px solid rgba(0, 240, 255, 0.4);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), 0 0 16px rgba(0, 240, 255, 0.15);
+}
+
+.mc-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mc-label {
+  font-size: 9px;
+  color: #8bb0d0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.mc-clock-box {
+  display: flex;
+  flex-direction: column;
+  padding-right: 12px;
+  border-right: 1px solid rgba(0, 240, 255, 0.2);
+}
+
+.mc-clock-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--cyan-telemetry);
+  font-feature-settings: 'tnum';
+}
+
+/* DRIVE CONTROLS D-PAD */
+.drive-dpad {
+  display: grid;
+  grid-template-columns: repeat(3, 38px);
+  grid-template-rows: repeat(2, 32px);
+  gap: 4px;
+}
+
+.btn-drive {
+  background: rgba(14, 28, 48, 0.9);
+  border: 1px solid rgba(0, 240, 255, 0.4);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.1s ease;
+}
+
+.btn-drive:hover {
+  background: rgba(0, 240, 255, 0.3);
+  border-color: var(--cyan-telemetry);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+}
+
+.btn-drive:active, .btn-drive.active {
+  background: var(--cyan-telemetry);
+  color: #000;
+  box-shadow: 0 0 14px var(--cyan-telemetry);
+}
+
+.btn-brake {
+  border-color: var(--crimson-hazard);
+  color: #ff708b;
+  font-size: 10px;
+}
+
+.btn-brake:active, .btn-brake.active {
+  background: var(--crimson-hazard);
+  color: #fff;
+}
+
+/* SPEED PRESETS */
+.speed-preset-group {
+  display: flex;
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.btn-speed-preset {
+  background: rgba(10, 20, 36, 0.8);
+  border: none;
+  border-right: 1px solid rgba(0, 240, 255, 0.2);
+  color: #8bb0d0;
+  padding: 5px 8px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-speed-preset:last-child {
+  border-right: none;
+}
+
+.btn-speed-preset:hover {
+  background: rgba(0, 240, 255, 0.2);
+  color: #fff;
+}
+
+.btn-speed-preset.active {
+  background: var(--cyan-telemetry);
+  color: #000;
+  font-weight: 700;
+}
+
+/* AUTONOMOUS & SCIENCE BUTTONS */
+.btn-action-autonav {
+  background: linear-gradient(135deg, #0b3d91, #1e5ebc);
+  border: 1px solid #4a90e2;
+  color: #fff;
+  font-weight: 700;
+}
+
+.btn-action-autonav.active {
+  background: linear-gradient(135deg, #00b4d8, #00f0ff);
+  color: #000;
+  animation: pulseHazard 1s infinite alternate;
+}
+
+.btn-action-drill {
+  background: linear-gradient(135deg, #2e4a36, #3b6e49);
+  border: 1px solid var(--emerald-good);
+  color: #e0ffe0;
+  font-weight: 700;
+}
+
+.btn-action-drill.active {
+  background: linear-gradient(135deg, #00ff88, #55ffaa);
+  color: #000;
+}
+
+/* VR BUTTON INJECTED */
+#vr-button-slot button, .vr-btn-custom {
+  background: linear-gradient(135deg, #fc3d21, #d62b11) !important;
+  color: #fff !important;
+  border: 1px solid #ff705a !important;
+  font-family: var(--font-mono) !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 1.5px !important;
+  padding: 6px 14px !important;
+  border-radius: 4px !important;
+  box-shadow: 0 0 16px rgba(252, 61, 33, 0.6) !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+#vr-button-slot button:hover {
+  box-shadow: 0 0 24px rgba(252, 61, 33, 0.9) !important;
+  transform: scale(1.03) !important;
+}
+
+/* MODAL WINDOWS */
+.modal-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 100;
+  background: rgba(2, 4, 8, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+.modal-box {
+  width: 100%;
+  max-width: 780px;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: rgba(10, 18, 30, 0.95);
+  border: 1px solid var(--hud-border);
+  border-radius: 10px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.8), 0 0 24px rgba(0, 240, 255, 0.2);
+  padding: 24px;
+  color: #d8e8f8;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+
+.modal-header h2 {
+  font-size: 16px;
+  color: #fff;
+  letter-spacing: 1.5px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modal-close {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 16px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.modal-close:hover {
+  background: var(--crimson-hazard);
+  border-color: var(--crimson-hazard);
+}
+
+.asset-card {
+  background: rgba(16, 28, 48, 0.6);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 12px;
+  transition: all 0.2s ease;
+}
+
+.asset-card:hover {
+  border-color: var(--cyan-telemetry);
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.2);
+}
+
+.asset-card-title {
+  font-weight: 700;
+  color: #fff;
+  font-size: 13px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.asset-card-desc {
+  font-size: 11px;
+  color: #8bb0d0;
+  margin-bottom: 8px;
+}
+
+.asset-card-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.drop-zone {
+  border: 2px dashed rgba(0, 240, 255, 0.4);
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  background: rgba(0, 240, 255, 0.03);
+  margin-top: 14px;
+  transition: all 0.2s;
+}
+
+.drop-zone:hover, .drop-zone.dragover {
+  background: rgba(0, 240, 255, 0.1);
+  border-color: var(--cyan-telemetry);
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.3);
+}
+
+/* CESIUM OVERLAY CONTROLS */
+#cesium-top-bar {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 18px;
+  background: rgba(6, 12, 22, 0.88);
+  border: 1px solid var(--hud-border);
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+}
+
+/* TOAST NOTIFICATION */
+#toast-notification {
+  position: absolute;
+  bottom: 85px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 90;
+  background: rgba(10, 20, 36, 0.95);
+  border: 1px solid var(--cyan-telemetry);
+  color: #fff;
+  padding: 8px 18px;
+  border-radius: 6px;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 20px rgba(0, 240, 255, 0.4);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+#toast-notification.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-5px);
+}
+
+/* RETICLE IN COCKPIT */
+#crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  margin-top: -7px;
+  margin-left: -7px;
+  pointer-events: none;
+  z-index: 8;
+  opacity: 0.6;
+}
+
+#crosshair::before, #crosshair::after {
+  content: '';
+  position: absolute;
+  background: var(--cyan-telemetry);
+}
+
+#crosshair::before {
+  top: 6px;
+  left: 0;
+  width: 14px;
+  height: 2px;
+}
+
+#crosshair::after {
+  top: 0;
+  left: 6px;
+  width: 2px;
+  height: 14px;
+}
+
+.key-badge {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 10px;
+  color: #fff;
+  margin: 0 2px;
+}
+
+@keyframes pulseHazard {
+  from { opacity: 0.7; }
+  to { opacity: 1; filter: drop-shadow(0 0 6px var(--crimson-hazard)); }
+}
+
+/* RESPONSIVE DESIGN */
+@media (max-width: 1024px) {
+  #mission-control-bar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 860px) {
+  .telemetry-left, .telemetry-right {
+    width: 220px;
+  }
+}
+
+@media (max-width: 680px) {
+  .hud-body {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+  .telemetry-left, .telemetry-right {
+    width: 100%;
+  }
+}
